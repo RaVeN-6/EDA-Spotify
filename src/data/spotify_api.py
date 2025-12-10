@@ -1,3 +1,4 @@
+# src/data/spotify_api.py
 import os
 
 import pandas as pd
@@ -62,7 +63,6 @@ def fetch_playlist_tracks_with_features(sp: spotipy.Spotify, playlist_id: str) -
         try:
             audio_features = sp.audio_features(batch)
         except spotipy.SpotifyException:
-            # Si Spotify devuelve 403 u otro error, se omite este lote
             continue
 
         if not audio_features:
@@ -71,7 +71,6 @@ def fetch_playlist_tracks_with_features(sp: spotipy.Spotify, playlist_id: str) -
         audio_features = [af for af in audio_features if af is not None]
         features_list.extend(audio_features)
 
-    # Si no hay audio features, devolvemos solo metadatos (sirve para ranking)
     if not features_list:
         return df_meta
 
