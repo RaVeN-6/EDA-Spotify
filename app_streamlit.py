@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# --- Ajuste del PATH para importar desde /src ---
 BASE_DIR = Path(__file__).resolve().parents[0]
 SRC_DIR = BASE_DIR / "src"
 if str(SRC_DIR) not in sys.path:
@@ -16,138 +17,190 @@ if str(SRC_DIR) not in sys.path:
 from data.spotify_api import get_spotify_client, fetch_playlist_tracks_with_features
 
 
+# ============================================================
+# 0) CONFIGURACIÓN INICIAL
+# ============================================================
+st.set_page_config(page_title="Spotify Analyzer", layout="wide")
+st.title("🎧 Analizador de Spotify")
+
 @st.cache_resource
 def get_client():
     return get_spotify_client()
 
 
-st.set_page_config(page_title="Spotify Playlist Analyzer", layout="wide")
-st.title("Analizador de Playlist En Spotify")
-
-# --- Cliente de Spotify ---
-st.sidebar.header("Autenticación / estado")
+# --- Cliente Spotify ---
 try:
     sp = get_client()
-    st.sidebar.success("Cliente de Spotify inicializado.")
 except Exception as e:
-    st.sidebar.error(f"Error creando cliente de Spotify: {e}")
+    st.error(f"Error creando cliente: {e}")
     st.stop()
 
-# --- Inputs ---
-st.sidebar.header("Entrada")
 
-playlist_url = st.sidebar.text_input(
-    "Pega la URL de una playlist de Spotify",
-    placeholder="https://open.spotify.com/playlist/...",
+# ============================================================
+# SELECTOR PRINCIPAL
+# ============================================================
+st.sidebar.header("¿Qué deseas hacer?")
+modo = st.sidebar.radio(
+    "Selecciona una opción:",
+    ["Analizar Playlist", "Buscar (Artista / Canción)"]
 )
-
-buscar_playlist_btn = st.sidebar.button("Analizar playlist")
-
 st.sidebar.markdown("---")
 
-search_query = st.sidebar.text_input(
-    "Buscar canción por nombre (global)",
-    placeholder="Nombre de la canción o 'artista - título'",
-)
-
-buscar_track_btn = st.sidebar.button("Buscar canción")
 
 # ============================================================
-# 1) Análisis de playlist por URL
+# 1) ANALIZAR PLAYLIST
 # ============================================================
-if playlist_url and buscar_playlist_btn:
-    playlist_id = playlist_url.split("/")[-1].split("?")[0]
-    st.subheader("Análisis de playlist")
-    st.write(f"Playlist ID detectado: `{playlist_id}`")
+if modo == "Analizar Playlist":
 
-    with st.spinner("Descargando playlist desde Spotify..."):
-        try:
-            df_pl = fetch_playlist_tracks_with_features(sp, playlist_id)
-        except Exception as e:
-            st.error(f"Error al descargar playlist: {e}")
+    st.subheader("📌 Análisis de Playlist por URL")
+
+    playlist_url = st.sidebar.text_input(
+        "Pega la URL de una playlist",
+        placeholder="https://open.spotify.com/playlist/..."
+    )
+
+    analizar_btn = st.sidebar.button("Analizar playlist")
+
+    if playlist_url and analizar_btn:
+
+        playlist_id = playlist_url.split("/")[-1].split("?")[0]
+
+        with st.spinner("Descargando playlist..."):
+            try:
+                df_pl = fetch_playlist_tracks_with_features(sp, playlist_id)
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.stop()
+
+        if df_pl.empty:
+            st.error("No se encontraron canciones.")
             st.stop()
 
-    if df_pl is None:
-        st.error("La función devolvió None. Revisa fetch_playlist_tracks_with_features.")
-        st.stop()
+        st.subheader("📊 Resumen de la Playlist")
+        st.write(f"Número de canciones: **{len(df_pl)}**")
 
-    if df_pl.empty:
-        st.error("No se encontraron canciones en esta playlist.")
-        st.stop()
+        st.dataframe(df_pl.head(20))
 
-    # --- Resumen de la playlist ---
-    st.subheader("Resumen de la playlist")
-    st.write(f"Número de canciones: {len(df_pl)}")
-    st.dataframe(df_pl.head(20))
-
-    # --- Ranking por popularidad ---
-    if "popularity" not in df_pl.columns:
-        st.warning("La columna 'popularity' no está disponible en el DataFrame.")
-    else:
-        df_ranked = df_pl.sort_values("popularity", ascending=False).reset_index(drop=True)
-
-        st.subheader("Top canciones por popularidad en la playlist")
-        top_n = st.slider("Número de canciones a mostrar", 5, 30, 15)
-
-        top_tracks = df_ranked.head(top_n)
-        st.bar_chart(data=top_tracks.set_index("Track")["popularity"]
-                     if "Track" in top_tracks.columns
-                     else top_tracks.set_index("track_name")["popularity"])
-
-    # --- Distribución de audio features ---
-    feature_cols = {"Danceability", "Energy", "Valence", "Tempo", "duration_ms"}
-    available = [col for col in feature_cols if col in df_pl.columns]
-
-    if available:
-        st.subheader("Distribución de características de audio")
-        for col in available:
-            st.line_chart(df_pl[col].sort_values().reset_index(drop=True))
-        if len(available) < len(feature_cols):
-            st.info(
-                "Se pudieron obtener solo algunas audio features; "
-                "algunas columnas faltan en los datos devueltos por Spotify."
-            )
-    else:
-        st.info(
-            "No se pudieron obtener audio features "
-            "(Danceability, Energy, Valence, Tempo, duration_ms)."
-        )
 
 # ============================================================
-# 2) Búsqueda global de canciones por nombre
+# 2) BUSCADOR (ARTISTA / CANCIÓN / AMBOS)
 # ============================================================
-if search_query and buscar_track_btn:
-    st.subheader(f"Resultados de búsqueda para: {search_query}")
+else:
 
-    with st.spinner("Buscando canciones en Spotify..."):
-        try:
-            # buscamos pistas por nombre
-            results = sp.search(q=search_query, type="track", limit=20)
-        except Exception as e:
-            st.error(f"Error al buscar canciones: {e}")
+    st.subheader("🔍 Buscador General")
+
+    artist_query = st.text_input("Nombre del artista (opcional)")
+    song_query = st.text_input("Nombre de la canción (opcional)")
+
+    buscar_btn = st.button("Buscar")
+
+
+    if buscar_btn:
+
+        artist_q = artist_query.strip().lower()
+        song_q = song_query.strip().lower()
+
+        # -------------------------------------------
+        # CASO A: Solo ARTISTA
+        # -------------------------------------------
+        if artist_q and not song_q:
+            with st.spinner("Buscando artista..."):
+                results = sp.search(q=f'artist:"{artist_query}"', type="artist", limit=5)
+
+            artists = results.get("artists", {}).get("items", [])
+            if not artists:
+                st.info("No se encontró el artista.")
+                st.stop()
+
+            artist = artists[0]
+            artist_id = artist["id"]
+            artist_name = artist["name"]
+
+            st.markdown(f"### 🎤 Canciones de **{artist_name}**")
+
+            top = sp.artist_top_tracks(artist_id, country="US")
+            tracks = top.get("tracks", [])
+
+            filas = [{
+                "Track": t["name"],
+                "Album": t["album"]["name"],
+                "Popularity": t["popularity"],
+                "ID": t["id"]
+            } for t in tracks]
+
+            st.dataframe(pd.DataFrame(filas))
             st.stop()
 
-    tracks = results.get("tracks", {}).get("items", [])
-    if not tracks:
-        st.info("No se encontraron canciones para esa búsqueda.")
-    else:
-        rows = []
-        for t in tracks:
-            rows.append(
-                {
-                    "track_id": t["id"],
+
+        # -------------------------------------------
+        # CASO B: Solo CANCIÓN
+        # -------------------------------------------
+        if song_q and not artist_q:
+
+            with st.spinner("Buscando canciones..."):
+                results = sp.search(q=f'track:"{song_query}"', type="track", limit=20)
+
+            tracks = results.get("tracks", {}).get("items", [])
+            if not tracks:
+                st.info("No se encontraron canciones.")
+                st.stop()
+
+            filas = []
+            for t in tracks:
+                filas.append({
                     "Track": t["name"],
                     "Artist": ", ".join(a["name"] for a in t["artists"]),
                     "Album": t["album"]["name"],
-                    "popularity": t["popularity"],
-                }
-            )
-        df_search = pd.DataFrame(rows)
-        st.dataframe(df_search)
+                    "Popularity": t["popularity"],
+                    "ID": t["id"]
+                })
 
-else:
-    if not (playlist_url or search_query):
-        st.info(
-            "Pega una URL de playlist y pulsa 'Analizar playlist', "
-            "o escribe el nombre de una canción y pulsa 'Buscar canción'."
-        )
+            df = pd.DataFrame(filas)
+
+            # Coincidencia parcial
+            df = df[df["Track"].str.lower().str.contains(song_q)]
+
+            st.dataframe(df)
+            st.stop()
+
+
+        # -------------------------------------------
+        # CASO C: ARTISTA + CANCIÓN (coincidencia parcial)
+        # -------------------------------------------
+        if artist_q and song_q:
+
+            query = f'track:"{song_query}" artist:"{artist_query}"'
+
+            with st.spinner("Buscando coincidencias..."):
+                results = sp.search(q=query, type="track", limit=20)
+
+            tracks = results.get("tracks", {}).get("items", [])
+
+            if not tracks:
+                st.info("No hay coincidencias exactas, se aplicará filtro flexible...")
+                # Búsqueda flexible
+                results = sp.search(q=f'track:"{song_query}"', type="track", limit=20)
+                tracks = results.get("tracks", {}).get("items", [])
+
+            filas = []
+            for t in tracks:
+                filas.append({
+                    "Track": t["name"],
+                    "Artist": ", ".join(a["name"] for a in t["artists"]),
+                    "Album": t["album"]["name"],
+                    "Popularity": t["popularity"],
+                    "ID": t["id"]
+                })
+
+            df = pd.DataFrame(filas)
+
+            # Filtro flexible
+            df = df[
+                df["Track"].str.lower().str.contains(song_q) &
+                df["Artist"].str.lower().str.contains(artist_q)
+            ]
+
+            if df.empty:
+                st.warning("No se encontraron coincidencias parciales.")
+            else:
+                st.dataframe(df)
