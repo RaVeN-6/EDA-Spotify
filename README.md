@@ -63,6 +63,30 @@ requirements.txt
 - En el subconjunto de rock (Metallica, Red Hot Chili Peppers, Linkin Park, Radiohead, AC/DC, Gorillaz), las canciones presentan **energy** más alta y duraciones ligeramente mayores que el resto del dataset.[memory:11][web:32]  
 - En los scatterplots de **Energy/Valence vs Streams** (escala log), las canciones de rock más reproducidas aparecen principalmente con energy alta y valence en rangos medios, indicando temas intensos pero no necesariamente los más “felices” según la métrica de valence.[memory:11][web:52]  
 
+## Modo playlist personalizada (API de Spotify)
+
+Además del análisis con el dataset de Kaggle, este proyecto permite analizar cualquier playlist de Spotify:
+
+1. Crear una app en [Spotify for Developers](https://developer.spotify.com/dashboard/) y obtener `Client ID` y `Client Secret`.
+2. Definir las variables de entorno:
+
+SPOTIFY_CLIENT_ID=...
+SPOTIFY_CLIENT_SECRET=...
+SPOTIFY_REDIRECT_URI=http://localhost:8888/callback
+
+
+3. Instalar dependencias:
+pip install -r requirements.txt
+
+
+4. Abrir `notebooks/02_playlist_analysis.ipynb`.
+5. Pegar la URL de una playlist de Spotify en la celda indicada. El notebook:
+- Descarga las canciones de la playlist y sus audio features mediante la API de Spotify.
+- Muestra un ranking de canciones ordenadas por popularidad (0–100).
+- Genera gráficos de distribución de `Energy`, `Valence`, `Danceability`, `Tempo`, etc., para esa playlist.
+- Permite buscar una canción concreta dentro de la playlist y ver su posición en el ranking.
+
+
 ## Futura Version
 
 - Incluir más artistas y subgéneros de rock para robustecer el subconjunto.

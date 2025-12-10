@@ -1,0 +1,39 @@
+# Entorno virtual
+venv/
+.env/
+*.venv/
+
+# Datos
+data/raw/
+data/processed/
+
+# Archivos de configuración local
+*.env
+.env.*
+.envrc
+
+# Caché de Spotify / auth
+.cache-spotify
+.cache
+*.cache
+
+# Archivos de Jupyter
+.ipynb_checkpoints/
+*.ipynb_convert*
+*.ipynb~*
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+
+# Configuración de editor / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Otros
+.DS_Store
+Thumbs.db
