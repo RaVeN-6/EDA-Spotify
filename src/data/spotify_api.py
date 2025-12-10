@@ -18,19 +18,17 @@ def get_spotify_client() -> spotipy.Spotify:
 
 
 def fetch_playlist_tracks_with_features(sp: spotipy.Spotify, playlist_id: str) -> pd.DataFrame:
-    """
-    Descarga todas las canciones de una playlist y, si es posible,
-    sus audio features. Devuelve un DataFrame listo para EDA/ranking.
-    """
     # 1) Obtener todas las pistas de la playlist (paginando)
     tracks: list[dict] = []
     results = sp.playlist_items(playlist_id, additional_types=("track",))
+
     while results:
         for item in results["items"]:
             track = item["track"]
             if track is None:
                 continue
             tracks.append(track)
+
         if results["next"]:
             results = sp.next(results)
         else:
