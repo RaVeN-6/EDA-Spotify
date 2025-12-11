@@ -1,36 +1,56 @@
-# src/data/spotify_api.py
 import os
-
 import pandas as pd
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 
+# --------------------------------------------------
+# CLIENTE DE SPOTIFY
+# --------------------------------------------------
 def get_spotify_client() -> spotipy.Spotify:
+    """
+    Autenticación de Spotify con OAuth.
+    """
     auth_manager = SpotifyOAuth(
-        client_id=os.environ["SPOTIFY_CLIENT_ID"],
-        client_secret=os.environ["SPOTIFY_CLIENT_SECRET"],
+        client_id=os.environ.get("SPOTIFY_CLIENT_ID"),
+        client_secret=os.environ.get("SPOTIFY_CLIENT_SECRET"),
         redirect_uri=os.environ.get("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8888/callback"),
-        scope="playlist-read-private playlist-read-collaborative user-library-read",
+        scope=(
+            "playlist-read-private playlist-read-collaborative user-library-read"
+        ),
         cache_path=".cache-spotify",
         open_browser=False,
     )
     return spotipy.Spotify(auth_manager=auth_manager)
 
 
+# --------------------------------------------------
+# FUNCIÓN PRINCIPAL DE ANÁLISIS
+# --------------------------------------------------
 def fetch_playlist_tracks_with_features(sp: spotipy.Spotify, playlist_id: str) -> pd.DataFrame:
-    # 1) Obtener todas las pistas de la playlist (paginando)
-    tracks: list[dict] = []
+    """
+    Obtiene TODA la información del playlist:
+    - Metadata del track
+    - Fecha de lanzamiento
+    - Album + detalles
+    - Audio features completos
+    - Datos útiles para análisis
+    """
+
+    # -----------------------------------------
+    # Obtener items del playlist (con paginación)
+    # -----------------------------------------
+    tracks = []
     results = sp.playlist_items(playlist_id, additional_types=("track",))
 
     while results:
-        for item in results["items"]:
-            track = item["track"]
-            if track is None:
-                continue
-            tracks.append(track)
+        items = results.get("items", [])
+        for item in items:
+            track = item.get("track")
+            if track:
+                tracks.append(track)
 
-        if results["next"]:
+        if results.get("next"):
             results = sp.next(results)
         else:
             break
@@ -38,71 +58,70 @@ def fetch_playlist_tracks_with_features(sp: spotipy.Spotify, playlist_id: str) -
     if not tracks:
         return pd.DataFrame()
 
-    # 2) Metadatos básicos
-    rows = []
+    # -----------------------------------------
+    # EXTRAER METADATOS
+    # -----------------------------------------
+    meta_rows = []
+
     for t in tracks:
-        rows.append(
-            {
-                "track_id": t["id"],
-                "track_name": t["name"],
-                "artist_name": ", ".join(a["name"] for a in t["artists"]),
-                "album_name": t["album"]["name"],
-                "popularity": t["popularity"],
-            }
-        )
+        album = t.get("album", {})
+        release_date = album.get("release_date")
 
-    df_meta = pd.DataFrame(rows)
+        meta_rows.append({
+            "track_id": t.get("id"),
+            "Track": t.get("name"),
+            "Artist": ", ".join(a.get("name") for a in t.get("artists", [])),
+            "Album": album.get("name"),
+            "Album_ID": album.get("id"),
+            "Album_Total_Tracks": album.get("total_tracks"),
+            "Release_Date": release_date,
+            "Popularity": t.get("popularity"),
+            "Duration_ms": t.get("duration_ms"),
+            "Track_Number": t.get("track_number"),
+            "Disc_Number": t.get("disc_number"),
+            "Preview_URL": t.get("preview_url"),
+        })
 
-    # 3) Audio features (opcional)
-    features_list: list[dict] = []
-    ids = df_meta["track_id"].dropna().tolist()
-    ids = [tid for tid in ids if isinstance(tid, str) and tid.strip()]
+    df_meta = pd.DataFrame(meta_rows)
+
+    # -----------------------------------------
+    # AUDIO FEATURES
+    # -----------------------------------------
+    ids = [tid for tid in df_meta["track_id"].dropna().tolist() if isinstance(tid, str)]
+    features_list = []
 
     for i in range(0, len(ids), 100):
-        batch = ids[i : i + 100]
+        batch = ids[i:i + 100]
+
         try:
             audio_features = sp.audio_features(batch)
         except spotipy.SpotifyException:
             continue
 
-        if not audio_features:
-            continue
-
-        audio_features = [af for af in audio_features if af is not None]
-        features_list.extend(audio_features)
+        if audio_features:
+            cleaned = [f for f in audio_features if f]
+            features_list.extend(cleaned)
 
     if not features_list:
         return df_meta
 
     df_feat = pd.DataFrame(features_list)
 
-    # 4) Unir metadatos + audio features
+    # -----------------------------------------
+    # MERGE METADATA + FEATURES
+    # -----------------------------------------
     df = df_meta.merge(df_feat, left_on="track_id", right_on="id", how="left")
 
-    # 5) Seleccionar columnas clave y renombrar
-    df = df[
-        [
-            "track_id",
-            "track_name",
-            "artist_name",
-            "album_name",
-            "popularity",
-            "danceability",
-            "energy",
-            "valence",
-            "tempo",
-            "duration_ms",
-        ]
-    ].rename(
-        columns={
-            "track_name": "Track",
-            "artist_name": "Artist",
-            "album_name": "Album",
-            "danceability": "Danceability",
-            "energy": "Energy",
-            "valence": "Valence",
-            "tempo": "Tempo",
-        }
-    )
+    # -----------------------------------------
+    # COLUMNAS FINALES ÚTILES (las acordadas)
+    # -----------------------------------------
+    final_cols = [
+        "track_id", "Track", "Artist", "Album", "Album_ID", "Album_Total_Tracks",
+        "Release_Date", "Popularity", "Duration_ms", "Track_Number", "Disc_Number",
+        "Preview_URL", "danceability", "energy", "valence", "tempo", "acousticness",
+        "instrumentalness", "liveness", "speechiness"
+    ]
+
+    df = df[[c for c in final_cols if c in df.columns]]
 
     return df

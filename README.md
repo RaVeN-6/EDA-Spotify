@@ -1,94 +1,111 @@
-# Análisis de música de Spotify (rock vs no-rock)
+# 🎸 Analizador de Música en Spotify (RaVeN-6)
 
-Proyecto de análisis exploratorio de datos (EDA) en Python sobre el dataset **Spotify and Youtube** de Kaggle, centrado en comparar canciones de rock frente a otros géneros a partir de sus características de audio y su popularidad (streams).  
+![Python Version](https://img.shields.io/badge/python-3.8%2B-blue?style=for-the-badge&logo=python)
+![Libraries](https://img.shields.io/badge/pandas-numpy-orange?style=for-the-badge)
+![Viz](https://img.shields.io/badge/matplotlib-seaborn-red?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
 
-## Objetivo
+> Un proyecto de Exploración de Datos (EDA) para descubrir qué hace popular a una canción y cómo el Rock se diferencia del resto, utilizando datos de Spotify y YouTube.
 
-- Explorar las características de audio de canciones populares en Spotify (danceability, energy, valence, tempo, duración, etc.).
-- Comparar un subconjunto de artistas de rock con el resto del dataset (no rock).
-- Visualizar cómo se relacionan estas características con la popularidad medida en `Stream` (escala logarítmica).
+## 📋 Descripción
 
-## Dataset
+Este proyecto realiza un análisis exhaustivo sobre el dataset **"Spotify and Youtube"** de Kaggle. El objetivo principal es desglosar las características de audio (como *energy*, *danceability*, *valence*) y entender su relación con la popularidad (*streams*).
 
-- Fuente: [Spotify and Youtube (Kaggle)](https://www.kaggle.com/datasets/salvatorerastelli/spotify-and-youtube)  
-- Tamaño: ~20 700 canciones con 28 columnas (audio features de Spotify + métricas de YouTube y Streams).  
-- El CSV se guarda en `data/raw/spotify.csv`.  
+Además, incluye un módulo especial para interactuar con la **API de Spotify**, permitiendo analizar tus propias playlists en tiempo real.
 
-## Tecnologías
+## 🎯 Objetivos del Proyecto
 
-- Python 3.x
-- pandas, numpy
-- matplotlib, seaborn
-- Jupyter Notebook
+1.  **Perfilado de Audio:** Analizar la distribución de métricas clave (tempo, duración, energía) en canciones exitosas.
+2.  **Rock vs. El Mundo:** Comparar un subconjunto de artistas de Rock legendarios (Metallica, RHCP, AC/DC, etc.) contra el resto del panorama musical.
+3.  **Factores de Éxito:** Visualizar correlaciones entre las características de la canción y su éxito en reproducciones (`Stream`).
+4.  **Herramienta Personalizada:** Proveer un script para analizar cualquier playlist pública de Spotify mediante su API.
 
-Para reproducir el entorno se recomienda instalar las dependencias desde `requirements.txt`.
+## 📂 Estructura del Repositorio
 
-## Estructura del repositorio
+El proyecto sigue una estructura modular para separar los datos crudos, el procesamiento y la visualización.
 
+```text
 spotify_rock/
-data/
-raw/
-spotify.csv
-notebooks/
-01_eda_general.ipynb
-src/
-config/
-paths.py
-data/
-loading.py
-analysis/
-eda_general.py
-rock_features.py
-viz/
-plots_rock.py
-tests/
-...
-README.md
-requirements.txt
+├── data/
+│   ├── raw/
+│   │   └── spotify.csv       # Dataset original (descargar de Kaggle)
+├── notebooks/
+│   ├── 01_eda_general.ipynb  # Análisis principal y visualizaciones estáticas
+│   └── 02_playlist.ipynb     # Análisis en vivo con API de Spotify
+├── src/
+│   ├── config/               # Configuraciones y rutas
+│   ├── data/                 # Scripts de carga y limpieza
+│   ├── analysis/             # Lógica de negocio y estadística
+│   └── viz/                  # Funciones de ploteo
+├── requirements.txt          # Dependencias del proyecto
+└── README.md                 # Documentación
 
-## Cómo ejecutar el análisis
+Instalación y Requisitos
+Prerrequisitos
+Python 3.x
 
-1. Clonar el repositorio y entrar en la carpeta del proyecto.
-2. Crear y activar un entorno virtual.
-3. Instalar dependencias:
+Cuenta de Spotify Developer (opcional, solo para el análisis de playlists)
 
+Paso a paso
+Clonar el repositorio:
+git clone [https://github.com/RaVeN-6/EDA-Spotify.git](https://github.com/RaVeN-6/EDA-Spotify.git)
+cd EDA-Spotify
 
-4. Descargar el dataset de Kaggle y guardarlo como `data/raw/spotify.csv`.
-5. Abrir `notebooks/01_eda_general.ipynb` y ejecutar las celdas en orden.
+# Windows
+python -m venv venv
+venv\Scripts\activate
 
-## Resumen de hallazgos
-
-- La mayoría de las canciones del dataset se concentran en niveles medios-altos de **energy** y **danceability**, con tempos en torno a 100–130 bpm y duraciones cerca de 3–4 minutos, algo consistente con otros análisis de canciones populares en Spotify.[memory:16][web:79]  
-- El mapa de calor de correlaciones muestra que **energy**, **danceability** y **valence** tienen correlación positiva moderada con los `Stream`, mientras que la duración tiene una relación más débil.[memory:16][web:54]  
-- En el subconjunto de rock (Metallica, Red Hot Chili Peppers, Linkin Park, Radiohead, AC/DC, Gorillaz), las canciones presentan **energy** más alta y duraciones ligeramente mayores que el resto del dataset.[memory:11][web:32]  
-- En los scatterplots de **Energy/Valence vs Streams** (escala log), las canciones de rock más reproducidas aparecen principalmente con energy alta y valence en rangos medios, indicando temas intensos pero no necesariamente los más “felices” según la métrica de valence.[memory:11][web:52]  
-
-## Modo playlist personalizada (API de Spotify)
-
-Además del análisis con el dataset de Kaggle, este proyecto permite analizar cualquier playlist de Spotify:
-
-1. Crear una app en [Spotify for Developers](https://developer.spotify.com/dashboard/) y obtener `Client ID` y `Client Secret`.
-2. Definir las variables de entorno:
-
-SPOTIFY_CLIENT_ID=...
-SPOTIFY_CLIENT_SECRET=...
-SPOTIFY_REDIRECT_URI=http://localhost:8888/callback
-
-
-3. Instalar dependencias:
 pip install -r requirements.txt
 
+Configurar Datos:
 
-4. Abrir `notebooks/02_playlist_analysis.ipynb`.
-5. Pegar la URL de una playlist de Spotify en la celda indicada. El notebook:
-- Descarga las canciones de la playlist y sus audio features mediante la API de Spotify.
-- Muestra un ranking de canciones ordenadas por popularidad (0–100).
-- Genera gráficos de distribución de `Energy`, `Valence`, `Danceability`, `Tempo`, etc., para esa playlist.
-- Permite buscar una canción concreta dentro de la playlist y ver su posición en el ranking.
+Descarga el dataset desde Kaggle: Spotify and Youtube.
 
+Coloca el archivo Spotify_Youtube.csv en la carpeta data/raw/ y renómbralo a spotify.csv.
 
-## Futura Version
+📊 Cómo ejecutar el análisis
+A. Análisis Exploratorio (Dataset Kaggle)
+Para ver los resultados del estudio sobre Rock y tendencias generales:
 
-- Incluir más artistas y subgéneros de rock para robustecer el subconjunto.
-- Añadir métricas derivadas (por ejemplo, ratios de YouTube como Likes/Views).
-- Explorar modelos simples (sin llegar a ML complejo) que expliquen mejor la variación en Streams.
+Abre Jupyter Notebook: jupyter notebook
+
+Navega a notebooks/01_eda_general.ipynb.
+
+Ejecuta todas las celdas secuencialmente.
+
+B. Modo Playlist Personalizada (API Spotify)
+Para analizar tu propia música:
+
+Crea una app en el Dashboard de Spotify for Developers.
+
+Obtén tu Client ID y Client Secret.
+
+Configura tus variables de entorno (o crea un archivo .env):
+
+export SPOTIFY_CLIENT_ID='tu_id_aqui'
+export SPOTIFY_CLIENT_SECRET='tu_secreto_aqui'
+export SPOTIFY_REDIRECT_URI='http://localhost:8888/callback'
+
+jecuta el notebook notebooks/02_playlist_analysis.ipynb e introduce el enlace de tu playlist.
+
+💡 Resumen de Hallazgos
+A continuación, algunos de los descubrimientos más interesantes tras el análisis:
+
+⚡ El estándar del éxito: Las canciones populares tienden a concentrarse en niveles medio-altos de energy y danceability, con un tempo estándar de 100–130 BPM.
+
+🔗 Correlaciones: Existe una correlación positiva moderada entre energy/danceability y el número de Streams. La duración de la canción, sin embargo, tiene poca influencia en el éxito actual.
+
+🎸 La Huella del Rock: El subconjunto analizado (Metallica, Linkin Park, Gorillaz, etc.) muestra niveles de energía superiores al promedio y duraciones más largas.
+
+💔 Intensidad vs. Felicidad: En el Rock, las canciones con más streams suelen tener mucha Energy pero Valence (positividad) media o baja. Son temas intensos, no necesariamente "felices".
+
+🔮 Roadmap (Próximos Pasos)
+[ ] Ampliar el dataset de Rock con más subgéneros (Indie, Metal, Classic).
+
+[ ] Implementar métricas derivadas (ej: Ratio Likes/Views de YouTube).
+
+[ ] Crear un modelo de regresión simple para predecir Streams basado en audio features.
+
+[ ] Exportar los resultados de la playlist a un reporte PDF/HTML.
+
+Desarrollado con ❤️ por RaVeN-6
